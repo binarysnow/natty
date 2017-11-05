@@ -16,9 +16,6 @@ public class Initialiser extends ChannelInitializer<SocketChannel> {
     protected void initChannel(final SocketChannel channel) throws Exception {
         final ChannelPipeline pipeline = channel.pipeline();
         pipeline.addLast("natsFrameDecoder", new NatsFrameDecoder(maxFrameSize));
-        pipeline.addLast();
-        pipeline.addLast();
-        pipeline.addLast();
-        pipeline.addLast();
+        pipeline.addLast("serverMessageHandler", new ServerMessageHandler());
     }
 }

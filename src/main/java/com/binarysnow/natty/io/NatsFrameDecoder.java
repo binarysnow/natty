@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 /**
- * Decodes
+ * Decodes a NATS frame into an object
  */
 public class NatsFrameDecoder extends ByteToMessageDecoder {
 
@@ -53,15 +53,17 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
             input.readBytes(commandBytes, 0, endOfLineIndex);
             input.skipBytes(TWO_BYTES);
             //String commandString = input.toString(input.readerIndex(), endOfLineIndex, CharsetUtil.UTF_8);
-            //input.skipBytes(endOfLineIndex + TWO_BYTES);
-            //Command command = serverCommandDecoder.decodeCommand(context, input, commandString);
             Command command = serverCommandDecoder.decodeCommand(context, input, commandBytes);
+
+            out.add(command);
         }
     }
 
     /**
      * Returns the index in the buffer of the end of line found.
      * Returns -1 if no end of line was found in the buffer.
+     * TODO add a check for frame size
+     * TODO continue if 0D is not preceeded by 0A
      */
     private static int findEndOfLine(final ByteBuf input) {
         int i = input.forEachByte(new ByteProcessor.IndexOfProcessor(HEX_0D));

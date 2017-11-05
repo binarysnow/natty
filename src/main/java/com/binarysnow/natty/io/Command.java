@@ -1,4 +1,9 @@
 package com.binarysnow.natty.io;
 
-public class Command {
+public interface Command {
+    CommandCode getCommandCode();
+
+    public enum CommandCode {
+        PING, PONG, ERROR, INFO, MESSAGE;
+    }
 }
