@@ -1,5 +1,7 @@
 package com.binarysnow.natty.io;
 
+import com.binarysnow.natty.NatsClient;
+import com.binarysnow.natty.frame.server.Command;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -21,37 +23,39 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
     private static final byte HEX_0D = 0x0d;
     private static final int TWO_BYTES = 2;
 
-    // TODO This can change after connection via server info
-    private final int maxFrameSize;
+    private final NatsClient natsClient;
 
     private final ServerCommandDecoder serverCommandDecoder;
 
     /**
      * A decoder for the NATS protocol
-     * @param maxFrameSize The maximum frame size allowed by this decoder
+     * @param natsClient The NatsClient object for the connection
      */
-    public NatsFrameDecoder(final int maxFrameSize) {
-        this.maxFrameSize = maxFrameSize;
-        this.serverCommandDecoder = new ServerCommandDecoder();
+    public NatsFrameDecoder(final NatsClient natsClient) {
+        this.natsClient = natsClient;
+        this.serverCommandDecoder = new ServerCommandDecoder(natsClient);
     }
 
     @Override
     protected void decode(final ChannelHandlerContext context, final ByteBuf input, final List<Object> out) throws Exception {
+        final long maxFrameSize = natsClient.getMaxFrameSize();
+
         final int endOfLineIndex = findEndOfLine(input);
 
         if (endOfLineIndex >= 0) {
             final int commandLength = endOfLineIndex - input.readerIndex();
             if (commandLength > maxFrameSize) {
-                maxFrameSizeExceeded(commandLength);
+                maxFrameSizeExceeded(commandLength, maxFrameSize);
             } else {
                 final int readableBytes = input.readableBytes();
                 if (readableBytes > maxFrameSize) {
-                    maxFrameSizeExceeded(readableBytes);
+                    maxFrameSizeExceeded(readableBytes, maxFrameSize);
                 }
             }
             byte[] commandBytes = new byte[endOfLineIndex];
             input.readBytes(commandBytes, 0, endOfLineIndex);
             input.skipBytes(TWO_BYTES);
+
             //String commandString = input.toString(input.readerIndex(), endOfLineIndex, CharsetUtil.UTF_8);
             Command command = serverCommandDecoder.decodeCommand(context, input, commandBytes);
 
@@ -77,7 +81,7 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
      * Handle the situation where the maximum frame size has been exceeded
      * @param readableBytes The number of readable bytes which caused this condition
      */
-    private void maxFrameSizeExceeded(final int readableBytes) {
+    private void maxFrameSizeExceeded(final int readableBytes, final long maxFrameSize) {
         final String message = "Frame length is equal to or greater than " + readableBytes + " bytes and exceeds maximum allowed of " + maxFrameSize + " bytes.";
         LOGGER.error(message);
         throw new TooLongFrameException(message);

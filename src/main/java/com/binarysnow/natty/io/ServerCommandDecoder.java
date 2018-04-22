@@ -1,26 +1,23 @@
 package com.binarysnow.natty.io;
 
-import com.binarysnow.natty.frame.server.Info;
-import com.binarysnow.natty.frame.server.Ping;
-import com.binarysnow.natty.frame.server.Pong;
-import com.binarysnow.natty.frame.server.ServerError;
+import com.binarysnow.natty.NatsClient;
+import com.binarysnow.natty.frame.server.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.util.CharsetUtil;
 
-import java.util.Arrays;
-
 public class ServerCommandDecoder {
 
-    private static final int INF = 4804166;
-    private static final int _ER = 2966866;
-    private static final int O_ = 20256;
-    private static final int R_ = 21024;
-    private static final int G = 71;
-    private static final int MSG = 5067591;
-    private static final int PIN = 5261646;
-    private static final int PON = 5263182;
+    private final NatsClient natsClient;
+
+    /**
+     * Create a ServerCommandDecoder
+     * @param natsClient The NatsClient for the connection
+     */
+    public ServerCommandDecoder(final NatsClient natsClient) {
+        this.natsClient = natsClient;
+    }
 
     /**
      * Decode a command String and build the corresponding object
@@ -47,33 +44,33 @@ public class ServerCommandDecoder {
         final int opCode = (commandBytes[0] << 16) | (commandBytes[1] << 8) | commandBytes[2];
 
         switch (opCode) {
-            case INF:
+            case Command.INF:
                 opCodeEnd = (commandBytes[3] << 8) | commandBytes[4];
-                if (opCodeEnd != O_) {
+                if (opCodeEnd != Command.O_) {
                     throw new CorruptedFrameException("Malformed INFO command.");
                 }
                 result = Info.parseString(new String(commandBytes, 5, commandBytes.length-5, CharsetUtil.US_ASCII));
                 break;
-            case MSG:
+            case Command.MSG:
                 result = null;
                 break;
-            case PIN:
+            case Command.PIN:
                 opCodeEnd = commandBytes[3];
-                if (opCodeEnd != G || commandBytes.length > 4) {
+                if (opCodeEnd != Command.G || commandBytes.length > 4) {
                     throw new CorruptedFrameException("Malformed PING command.");
                 }
                 result = new Ping();
                 break;
-            case PON:
+            case Command.PON:
                 opCodeEnd = commandBytes[3];
-                if (opCodeEnd != G || commandBytes.length > 4) {
+                if (opCodeEnd != Command.G || commandBytes.length > 4) {
                     throw new CorruptedFrameException("Malformed PONG command.");
                 }
                 result = new Pong();
                 break;
-            case _ER:
+            case Command._ER:
                 opCodeEnd = (commandBytes[3] << 8) | commandBytes[4];
-                if (opCodeEnd != R_) {
+                if (opCodeEnd != Command.R_) {
                     throw new CorruptedFrameException("Malformed -ERR command");
                 }
                 result = new ServerError();
