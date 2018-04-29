@@ -82,7 +82,9 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
     private void sendSubscribe(final ChannelHandlerContext context, final Subscribe subscribe) {
         context.write(subscribe.getCommandCode().getByteBuffer());
         context.write(Command.SPACE);
-        context.write(subscribe.getSubject());
+
+        context.write(Unpooled.copiedBuffer(subscribe.getSubject(), StandardCharsets.US_ASCII));
+        context.write(Command.SPACE);
 
         if (subscribe.getQueueGroup().isPresent()) {
             ByteBuf queueGroupBuf = Unpooled.copiedBuffer(subscribe.getQueueGroup().get(), StandardCharsets.US_ASCII);
@@ -90,7 +92,7 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
             context.write(Command.SPACE);
         }
 
-        context.write(subscribe.getSubscriptionId());
+        context.write(Unpooled.copiedBuffer(subscribe.getSubscriptionId(), StandardCharsets.US_ASCII));
         context.write(Command.LINE_TERMINATOR);
         context.flush();
     }

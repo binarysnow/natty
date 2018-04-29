@@ -19,13 +19,13 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsFrameDecoder.class);
 
-    private static final byte HEX_0A = 0x0a;
-    private static final byte HEX_0D = 0x0d;
     private static final int TWO_BYTES = 2;
 
     private final NatsClient natsClient;
 
     private final ServerCommandDecoder serverCommandDecoder;
+
+    private final EndOfLineProcessor endOfLineProcessor;
 
     /**
      * A decoder for the NATS protocol
@@ -34,6 +34,7 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
     public NatsFrameDecoder(final NatsClient natsClient) {
         this.natsClient = natsClient;
         this.serverCommandDecoder = new ServerCommandDecoder(natsClient);
+        this.endOfLineProcessor = new EndOfLineProcessor();
     }
 
     @Override
@@ -42,7 +43,7 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
 
         final int endOfLineIndex = findEndOfLine(input);
 
-        if (endOfLineIndex >= 0) {
+        if (endOfLineIndex > 0) {
             final int commandLength = endOfLineIndex - input.readerIndex();
             if (commandLength > maxFrameSize) {
                 maxFrameSizeExceeded(commandLength, maxFrameSize);
@@ -52,8 +53,8 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
                     maxFrameSizeExceeded(readableBytes, maxFrameSize);
                 }
             }
-            byte[] commandBytes = new byte[endOfLineIndex];
-            input.readBytes(commandBytes, 0, endOfLineIndex);
+            byte[] commandBytes = new byte[commandLength];
+            input.readBytes(commandBytes, 0, commandLength);
             input.skipBytes(TWO_BYTES);
 
             //String commandString = input.toString(input.readerIndex(), endOfLineIndex, CharsetUtil.UTF_8);
@@ -66,14 +67,15 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
     /**
      * Returns the index in the buffer of the end of line found.
      * Returns -1 if no end of line was found in the buffer.
-     * TODO add a check for frame size
-     * TODO continue if 0D is not preceeded by 0A
      */
-    private static int findEndOfLine(final ByteBuf input) {
-        int i = input.forEachByte(new ByteProcessor.IndexOfProcessor(HEX_0D));
-        if (i > 0 && input.getByte(i - 1) == HEX_0A) {
-            i--;
+    private int findEndOfLine(final ByteBuf input) {
+        endOfLineProcessor.reset(natsClient.getMaxFrameSize());
+        int i = input.forEachByte(endOfLineProcessor);
+
+        if (i > 0) {
+            i -= 1;
         }
+
         return i;
     }
 

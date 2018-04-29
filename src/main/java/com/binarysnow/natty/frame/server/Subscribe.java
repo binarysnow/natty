@@ -48,7 +48,7 @@ public class Subscribe implements ClientCommand {
      * @return The optional queue group for the subscription
      */
     public Optional<String> getQueueGroup() {
-        return Optional.of(queueGroup);
+        return Optional.ofNullable(queueGroup);
     }
 
     /**

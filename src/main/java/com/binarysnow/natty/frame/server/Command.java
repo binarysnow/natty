@@ -13,6 +13,7 @@ public interface Command {
     int R_ = 21024;
     int G = 71;
     int MSG = 5067591;
+    int OK = 2838347;
     int PIN = 5261646;
     int PON = 5263182;
     ByteBuf LINE_TERMINATOR = Unpooled.unreleasableBuffer(Unpooled.wrappedBuffer(new byte[] { (byte) 0x0d, (byte) 0x0a}));
@@ -20,13 +21,16 @@ public interface Command {
 
     CommandCode getCommandCode();
 
-        enum CommandCode {
+
+
+    enum CommandCode {
             CONNECT("CONNECT"),
             SUBSCRIBE("SUB"),
             UNSUBSCRIBE("UNSUB"),
             PUBLISH("PUB"),
             PING("PING"),
             PONG("PONG"),
+            OK("OK"),
             ERROR("-ERR"),
             INFO("INFO"),
             MESSAGE("MSG");

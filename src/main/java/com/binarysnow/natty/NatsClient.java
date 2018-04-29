@@ -1,21 +1,37 @@
 package com.binarysnow.natty;
 
-import com.binarysnow.natty.frame.server.Info;
-import com.binarysnow.natty.frame.server.Publish;
+import com.binarysnow.natty.frame.server.*;
 import com.binarysnow.natty.io.Initialiser;
+import com.google.common.io.BaseEncoding;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class NatsClient {
 
+    private final static Logger LOGGER = LoggerFactory.getLogger(NatsClient.class);
+
     private final static long DEFAULT_FRAME_SIZE = 1024;
 
+    private final BaseEncoding base16Encoding = BaseEncoding.base16();
+
     private final String address;
+
     private final int port;
+
+    private final AtomicInteger subscriptionIdCounter = new AtomicInteger();
+
+    private final Map<String, MessageReceiver> subscriberMap = new ConcurrentHashMap<>();
 
     private Channel channel;
 
@@ -65,22 +81,47 @@ public class NatsClient {
         channel.write(new Publish(subject, data));
     }
 
-    public void subscribe() {
+    public void request(final String subject, final byte[] data) {
+        //final String replyTo = ;
+        //channel.write(new Publish(subject, replyTo, data));
+    }
 
+    public void subscribe(final String subject, final MessageReceiver receiver) {
+        final String subscriptionId = Integer.toHexString(subscriptionIdCounter.getAndIncrement());
+        channel.write(new Subscribe(subject, subscriptionId));
+        subscriberMap.put(subscriptionId, receiver);
     }
 
     public void unsubscribe() {
 
     }
 
+    public void ping() {
+        channel.write(new Ping());
+    }
+
     /**
      * Processes an INFO message
      */
     public void processInfo(final Info info) {
-        System.out.println(info.toString());
+        LOGGER.debug(info.toString());
 
         if (info.getMaximumPayload() != null) {
             setMaxFrameSize(info.getMaximumPayload());
+        }
+    }
+
+    public void processMessage(final Message message) {
+        LOGGER.debug(message.toString());
+        final String subscriptionId = message.getSubscriptionId();
+        final MessageReceiver messageReceiver = subscriberMap.get(subscriptionId);
+
+        try {
+            if (messageReceiver != null) {
+                messageReceiver.receive(message.getData());
+            }
+        } catch (final Exception exception) {
+            LOGGER.error("Exception in MessageReceiver.receiver()", exception);
         }
     }
 }

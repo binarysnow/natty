@@ -33,7 +33,7 @@ public class Publish implements ClientCommand {
     }
 
     public Optional<String> getReplyTo() {
-        return Optional.of(replyTo);
+        return Optional.ofNullable(replyTo);
     }
 
     public byte[] getData() {

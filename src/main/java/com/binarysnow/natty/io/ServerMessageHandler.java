@@ -3,11 +3,16 @@ package com.binarysnow.natty.io;
 import com.binarysnow.natty.NatsClient;
 import com.binarysnow.natty.frame.server.Command;
 import com.binarysnow.natty.frame.server.Info;
+import com.binarysnow.natty.frame.server.Message;
 import com.binarysnow.natty.frame.server.Pong;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ServerMessageHandler extends ChannelInboundHandlerAdapter {
+
+    private final static Logger LOGGER = LoggerFactory.getLogger(ServerMessageHandler.class);
 
     private final NatsClient natsClient;
 
@@ -24,21 +29,29 @@ public class ServerMessageHandler extends ChannelInboundHandlerAdapter {
         final Command.CommandCode commandCode = ((Command) command).getCommandCode();
         switch (commandCode) {
             case PING:
-                System.out.println("<-PING");
+                LOGGER.debug("<-PING");
                 context.write(new Pong());
                 break;
             case PONG:
-                System.out.println("<-PONG");
+                LOGGER.debug("<-PONG");
                 break;
             case ERROR:
-                System.out.println("<-ERROR");
+                LOGGER.debug("<-ERROR");
                 break;
             case INFO:
                 final Info info = (Info) command;
                 natsClient.processInfo(info);
                 break;
             case MESSAGE:
-                System.out.println("<-MESSAGE");
+                LOGGER.debug("<-MESSAGE");
+                final Message message = (Message) command;
+                natsClient.processMessage(message);
+                break;
+            case OK:
+                LOGGER.debug("<-OK");
+                break;
+            default:
+                LOGGER.error("UNKNOWN SERVER COMMAND");
                 break;
         }
     }
