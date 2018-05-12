@@ -21,8 +21,6 @@ public interface Command {
 
     CommandCode getCommandCode();
 
-
-
     enum CommandCode {
             CONNECT("CONNECT"),
             SUBSCRIBE("SUB"),

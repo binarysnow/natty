@@ -1,5 +1,6 @@
 package com.binarysnow.natty;
 
+import com.binarysnow.natty.exception.CommunicationException;
 import com.binarysnow.natty.frame.server.*;
 import com.binarysnow.natty.io.Initialiser;
 import com.google.common.io.BaseEncoding;
@@ -86,14 +87,30 @@ public class NatsClient {
         //channel.write(new Publish(subject, replyTo, data));
     }
 
-    public void subscribe(final String subject, final MessageReceiver receiver) {
+    public Subscription subscribe(final String subject, final MessageReceiver receiver) throws CommunicationException {
         final String subscriptionId = Integer.toHexString(subscriptionIdCounter.getAndIncrement());
-        channel.write(new Subscribe(subject, subscriptionId));
-        subscriberMap.put(subscriptionId, receiver);
+        final ChannelFuture future = channel.writeAndFlush(new Subscribe(subject, subscriptionId));
+        future.awaitUninterruptibly();
+        if (future.isSuccess()) {
+            LOGGER.debug("Subscribed to {} with id {}", subject, subscriptionId);
+            subscriberMap.put(subscriptionId, receiver);
+            return new Subscription(subject, subscriptionId, receiver);
+        } else {
+            LOGGER.error("Subscribe failed, subject:'{}', id:'{}'", subject, subscriptionId);
+            throw new CommunicationException("Subscribe failed", future.cause());
+        }
     }
 
-    public void unsubscribe() {
-
+    public void unsubscribe(final Subscription subscription) throws CommunicationException {
+        final ChannelFuture future = channel.writeAndFlush(new Unsubscribe(subscription.getSubscriptionId()));
+        future.awaitUninterruptibly();
+        if (future.isSuccess()) {
+            LOGGER.debug("Unsubscribed from {} with id {}", subscription.getSubject(), subscription.getSubscriptionId());
+            subscriberMap.remove(subscription.getSubscriptionId());
+        } else {
+            LOGGER.error("Unsubscribe failed, subject:'{}', id:'{}'", subscription.getSubject(), subscription.getSubscriptionId());
+            throw new CommunicationException("Unsubscribe failed", future.cause());
+        }
     }
 
     public void ping() {

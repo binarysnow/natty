@@ -1,9 +1,11 @@
 package com.binarysnow.natty;
 
+import com.binarysnow.natty.exception.CommunicationException;
+
 import java.nio.charset.StandardCharsets;
 
 public class TestConnect {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws CommunicationException, InterruptedException {
         NatsClient client = new NatsClient("localhost", 4222);
 
         System.out.println("connect");
