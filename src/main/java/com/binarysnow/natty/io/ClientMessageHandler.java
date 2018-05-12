@@ -2,7 +2,6 @@ package com.binarysnow.natty.io;
 
 import com.binarysnow.natty.frame.server.*;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
@@ -39,11 +38,11 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
                 break;
             case PING:
                 LOGGER.debug("->PING");
-                sendSimple(context, commandCode.getByteBuffer());
+                sendSimple(context, commandCode.getBytes());
                 break;
             case PONG:
                 LOGGER.debug("->PONG");
-                sendSimple(context, commandCode.getByteBuffer());
+                sendSimple(context, commandCode.getBytes());
                 break;
         }
     }
@@ -54,24 +53,25 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
      * @param publish The Publish object containing the message details
      */
     private void sendPublish(final ChannelHandlerContext context, final Publish publish) {
-        context.write(publish.getCommandCode().getByteBuffer());
-        context.write(Command.SPACE);
+        final ByteBuf buffer = context.alloc().buffer();
 
-        context.write(Unpooled.copiedBuffer(publish.getSubject(), StandardCharsets.US_ASCII));
-        context.write(Command.SPACE);
+        buffer.writeBytes(publish.getCommandCode().getBytes());
+        buffer.writeByte(Command.SPACE);
+
+        buffer.writeCharSequence(publish.getSubject(), StandardCharsets.US_ASCII);
+        buffer.writeByte(Command.SPACE);
 
         if (publish.getReplyTo().isPresent()) {
-            ByteBuf replyToBuf = Unpooled.copiedBuffer(publish.getReplyTo().get(), StandardCharsets.US_ASCII);
-            context.write(replyToBuf);
-            context.write(Command.SPACE);
+            buffer.writeCharSequence(publish.getReplyTo().get(), StandardCharsets.US_ASCII);
+            buffer.writeByte(Command.SPACE);
         }
 
-        ByteBuf payloadSizeBuf = Unpooled.copiedBuffer(String.valueOf(publish.getData().length), StandardCharsets.US_ASCII);
-        context.write(payloadSizeBuf);
-        context.write(Command.LINE_TERMINATOR);
-        context.write(Unpooled.copiedBuffer(publish.getData()));
-        context.write(Command.LINE_TERMINATOR);
-        context.flush();
+        buffer.writeCharSequence(String.valueOf(publish.getData().length), StandardCharsets.US_ASCII);
+        buffer.writeBytes(Command.LINE_TERMINATOR);
+        buffer.writeBytes(publish.getData());
+        buffer.writeBytes(Command.LINE_TERMINATOR);
+
+        context.writeAndFlush(buffer);
     }
 
     /**
@@ -80,21 +80,23 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
      * @param subscribe The Subscribe object containing the message details
      */
     private void sendSubscribe(final ChannelHandlerContext context, final Subscribe subscribe) {
-        context.write(subscribe.getCommandCode().getByteBuffer());
-        context.write(Command.SPACE);
+        final ByteBuf buffer = context.alloc().buffer();
 
-        context.write(Unpooled.copiedBuffer(subscribe.getSubject(), StandardCharsets.US_ASCII));
-        context.write(Command.SPACE);
+        buffer.writeBytes(subscribe.getCommandCode().getBytes());
+        buffer.writeByte(Command.SPACE);
+
+        buffer.writeCharSequence(subscribe.getSubject(), StandardCharsets.US_ASCII);
+        buffer.writeByte(Command.SPACE);
 
         if (subscribe.getQueueGroup().isPresent()) {
-            ByteBuf queueGroupBuf = Unpooled.copiedBuffer(subscribe.getQueueGroup().get(), StandardCharsets.US_ASCII);
-            context.write(queueGroupBuf);
-            context.write(Command.SPACE);
+            buffer.writeCharSequence(subscribe.getQueueGroup().get(), StandardCharsets.US_ASCII);
+            buffer.writeByte(Command.SPACE);
         }
 
-        context.write(Unpooled.copiedBuffer(subscribe.getSubscriptionId(), StandardCharsets.US_ASCII));
-        context.write(Command.LINE_TERMINATOR);
-        context.flush();
+        buffer.writeCharSequence(subscribe.getSubscriptionId(), StandardCharsets.US_ASCII);
+        buffer.writeBytes(Command.LINE_TERMINATOR);
+
+        context.writeAndFlush(buffer);
     }
 
     /**
@@ -103,28 +105,37 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
      * @param unsubscribe The Unsubscribe object containing the message details
      */
     private void sendUnsubscribe(final ChannelHandlerContext context, final Unsubscribe unsubscribe) {
-        context.write(unsubscribe.getCommandCode().getByteBuffer());
-        context.write(Command.SPACE);
-        context.write(unsubscribe.getSubscriptionId());
+        final ByteBuf buffer = context.alloc().buffer();
+
+        buffer.writeBytes(unsubscribe.getCommandCode().getBytes());
+        buffer.writeByte(Command.SPACE);
+        buffer.writeCharSequence(unsubscribe.getSubscriptionId(), StandardCharsets.US_ASCII);
 
         if (unsubscribe.getMaxMessages().isPresent()) {
-            ByteBuf queueGroupBuf = Unpooled.copiedBuffer(unsubscribe.getMaxMessages().get().toString(), StandardCharsets.US_ASCII);
-            context.write(queueGroupBuf);
-            context.write(Command.SPACE);
+            buffer.writeCharSequence(unsubscribe.getMaxMessages().get().toString(), StandardCharsets.US_ASCII);
+            buffer.writeByte(Command.SPACE);
         }
 
-        context.write(Command.LINE_TERMINATOR);
-        context.flush();
+        buffer.writeBytes(Command.LINE_TERMINATOR);
+
+        context.writeAndFlush(buffer);
     }
 
     /**
      * Send a command which requires no parameters.
      * @param context The ChannelHandlerContext
-     * @param byteBuffer The ByteBuf to send
+     * @param bytes The bytes to send
      */
-    private void sendSimple(final ChannelHandlerContext context, final ByteBuf byteBuffer) {
-        context.write(byteBuffer);
-        context.write(Command.LINE_TERMINATOR);
-        context.flush();
+    private void sendSimple(final ChannelHandlerContext context, final byte[] bytes) {
+        final ByteBuf buffer = context.alloc().buffer(bytes.length + 2);
+        buffer.writeBytes(bytes);
+        buffer.writeBytes(Command.LINE_TERMINATOR);
+
+        context.writeAndFlush(buffer);
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        LOGGER.error("Exception", cause);
     }
 }

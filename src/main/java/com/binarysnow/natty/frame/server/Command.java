@@ -1,8 +1,5 @@
 package com.binarysnow.natty.frame.server;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-
 import java.nio.charset.StandardCharsets;
 
 public interface Command {
@@ -16,8 +13,9 @@ public interface Command {
     int OK = 2838347;
     int PIN = 5261646;
     int PON = 5263182;
-    ByteBuf LINE_TERMINATOR = Unpooled.unreleasableBuffer(Unpooled.wrappedBuffer(new byte[] { (byte) 0x0d, (byte) 0x0a}));
-    ByteBuf SPACE = Unpooled.unreleasableBuffer(Unpooled.wrappedBuffer(new byte[] { (byte) 0x20}));
+
+    byte[] LINE_TERMINATOR = new byte[] { (byte) 0x0d, (byte) 0x0a};
+    char SPACE = ' ';
 
     CommandCode getCommandCode();
 
@@ -33,15 +31,14 @@ public interface Command {
             INFO("INFO"),
             MESSAGE("MSG");
 
-            private final ByteBuf byteBuffer;
+            private final byte[] bytes;
 
             CommandCode(final String command) {
-                final byte[] bytes = command.getBytes(StandardCharsets.US_ASCII);
-                this.byteBuffer = Unpooled.unreleasableBuffer(Unpooled.wrappedBuffer(bytes));
+                bytes = command.getBytes(StandardCharsets.US_ASCII);
             }
 
-            public ByteBuf getByteBuffer() {
-                return byteBuffer;
+            public byte[] getBytes() {
+                return bytes;
             }
         }
 }
