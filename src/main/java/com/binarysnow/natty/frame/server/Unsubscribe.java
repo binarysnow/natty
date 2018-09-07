@@ -2,7 +2,7 @@ package com.binarysnow.natty.frame.server;
 
 import java.util.Optional;
 
-public class Unsubscribe implements Command {
+public class Unsubscribe implements ClientCommand {
 
     private final String subscriptionId;
 
@@ -28,6 +28,6 @@ public class Unsubscribe implements Command {
     }
 
     public Optional<Integer> getMaxMessages() {
-        return Optional.of(maxMessages);
+        return Optional.ofNullable(maxMessages);
     }
 }

@@ -3,6 +3,8 @@ package com.binarysnow.natty;
 import com.binarysnow.natty.exception.CommunicationException;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.Random;
 
 public class TestConnect {
     public static void main(String[] args) throws CommunicationException, InterruptedException {
@@ -12,27 +14,38 @@ public class TestConnect {
 
         client.connect();
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         client.publish("TEST_SUBJECT", "This is a test!".getBytes(StandardCharsets.UTF_8));
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         client.ping();
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
-        client.subscribe("TEST_SUBJECT", TestConnect::receiver1);
+        Subscription subscription1 = client.subscribe("TEST_SUBJECT", TestConnect::receiver1);
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
-        client.subscribe("TEST_SUBJECT", TestConnect::receiver2);
+        Subscription subscription2 = client.subscribe("TEST_SUBJECT", TestConnect::receiver2);
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         client.publish("TEST_SUBJECT", "This is a test!".getBytes(StandardCharsets.UTF_8));
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
+
+        client.unsubscribe(subscription1);
+
+        System.out.println(System.currentTimeMillis());
+        byte[] b = new byte[300];
+        new Random().nextBytes(b);
+
+        for (int i = 0; i < 100000; i++) {
+            client.publish("NO_SUBJECT", b);
+        }
+        System.out.println(System.currentTimeMillis());
 
         System.out.println("fin");
     }

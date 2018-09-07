@@ -30,11 +30,11 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
                 break;
             case SUBSCRIBE:
                 LOGGER.debug("->SUBSCRIBE");
-                sendSubscribe(context, (Subscribe) command);
+                sendSubscribe(context, (Subscribe) command, promise);
                 break;
             case UNSUBSCRIBE:
                 LOGGER.debug("->UNSUBSCRIBE");
-                sendUnsubscribe(context, (Unsubscribe) command);
+                sendUnsubscribe(context, (Unsubscribe) command, promise);
                 break;
             case PING:
                 LOGGER.debug("->PING");
@@ -71,15 +71,16 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
         buffer.writeBytes(publish.getData());
         buffer.writeBytes(Command.LINE_TERMINATOR);
 
-        context.writeAndFlush(buffer);
+        context.writeAndFlush(buffer, context.voidPromise());
     }
 
     /**
      * Send a Subscribe message
      * @param context The ChannelHandlerContext
      * @param subscribe The Subscribe object containing the message details
+     * @param promise The ChannelPromise to notify when the operation is complete
      */
-    private void sendSubscribe(final ChannelHandlerContext context, final Subscribe subscribe) {
+    private void sendSubscribe(final ChannelHandlerContext context, final Subscribe subscribe, final ChannelPromise promise) {
         final ByteBuf buffer = context.alloc().buffer();
 
         buffer.writeBytes(subscribe.getCommandCode().getBytes());
@@ -96,15 +97,16 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
         buffer.writeCharSequence(subscribe.getSubscriptionId(), StandardCharsets.US_ASCII);
         buffer.writeBytes(Command.LINE_TERMINATOR);
 
-        context.writeAndFlush(buffer);
+        context.writeAndFlush(buffer, promise);
     }
 
     /**
      * Send an Unsubscribe message
      * @param context The ChannelHandlerContext
      * @param unsubscribe The Unsubscribe object containing the message details
+     * @param promise The ChannelPromise to notify when the operation is complete
      */
-    private void sendUnsubscribe(final ChannelHandlerContext context, final Unsubscribe unsubscribe) {
+    private void sendUnsubscribe(final ChannelHandlerContext context, final Unsubscribe unsubscribe, final ChannelPromise promise) {
         final ByteBuf buffer = context.alloc().buffer();
 
         buffer.writeBytes(unsubscribe.getCommandCode().getBytes());
@@ -118,7 +120,7 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
 
         buffer.writeBytes(Command.LINE_TERMINATOR);
 
-        context.writeAndFlush(buffer);
+        context.writeAndFlush(buffer, promise);
     }
 
     /**
@@ -131,7 +133,7 @@ public class ClientMessageHandler extends ChannelOutboundHandlerAdapter {
         buffer.writeBytes(bytes);
         buffer.writeBytes(Command.LINE_TERMINATOR);
 
-        context.writeAndFlush(buffer);
+        context.writeAndFlush(buffer, context.voidPromise());
     }
 
     @Override

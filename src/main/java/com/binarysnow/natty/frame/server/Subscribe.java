@@ -14,7 +14,7 @@ public class Subscribe implements ClientCommand {
     private final String subscriptionId;
 
     /**
-     * Construct A Subscribe command with a subject and subscriptionId
+     * Construct a Subscribe command with a subject and subscription identifier
      * @param subject The subject to subscribe to
      * @param subscriptionId The connection-unique subscription ID
      */
@@ -24,6 +24,12 @@ public class Subscribe implements ClientCommand {
         this.subscriptionId = subscriptionId;
     }
 
+    /**
+     * Constrict a Subscribe command with a subject, queue group and subscription identifier
+     * @param subject The subject to subscribe to
+     * @param queueGroup The queue group of the subscription
+     * @param subscriptionId The subscription identifier
+     */
     public Subscribe(final String subject, final String queueGroup, final String subscriptionId) {
         this.subject = subject;
         this.queueGroup = queueGroup;

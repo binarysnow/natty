@@ -55,7 +55,7 @@ public class NatsClient {
         this.port = port;
     }
 
-    public void connect() throws InterruptedException {
+    public NatsConnection connect() throws InterruptedException {
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(new NioEventLoopGroup());
         bootstrap.channel(NioSocketChannel.class);
@@ -86,6 +86,9 @@ public class NatsClient {
      * Publish a message
      */
     public void publish(final String subject, final byte[] data) {
+        while (!channel.isWritable()) {
+
+        }
         channel.write(new Publish(subject, data));
     }
 
@@ -94,10 +97,12 @@ public class NatsClient {
         //channel.write(new Publish(subject, replyTo, data));
     }
 
-    public Subscription subscribe(final String subject, final MessageReceiver receiver) throws CommunicationException {
+    public Subscription subscribe(final String subject, final MessageReceiver receiver) throws CommunicationException, InterruptedException {
         final String subscriptionId = Integer.toHexString(subscriptionIdCounter.getAndIncrement());
         final ChannelFuture future = channel.writeAndFlush(new Subscribe(subject, subscriptionId));
-        future.awaitUninterruptibly();
+
+        future.await();
+
         if (future.isSuccess()) {
             LOGGER.debug("Subscribed to {} with id {}", subject, subscriptionId);
             subscriberMap.put(subscriptionId, receiver);
@@ -108,20 +113,22 @@ public class NatsClient {
         }
     }
 
-    public void unsubscribe(final Subscription subscription) throws CommunicationException {
+    public void unsubscribe(final Subscription subscription) throws CommunicationException, InterruptedException {
         final ChannelFuture future = channel.writeAndFlush(new Unsubscribe(subscription.getSubscriptionId()));
-        future.awaitUninterruptibly();
+
+        future.await();
+
         if (future.isSuccess()) {
-            LOGGER.debug("Unsubscribed from {} with id {}", subscription.getSubject(), subscription.getSubscriptionId());
+            LOGGER.debug("Unsubscribed from: subject:'{}' id:'{}'", subscription.getSubject(), subscription.getSubscriptionId());
             subscriberMap.remove(subscription.getSubscriptionId());
         } else {
-            LOGGER.error("Unsubscribe failed, subject:'{}', id:'{}'", subscription.getSubject(), subscription.getSubscriptionId());
+            LOGGER.error("Unsubscribe failed: subject:'{}' id:'{}'", subscription.getSubject(), subscription.getSubscriptionId());
             throw new CommunicationException("Unsubscribe failed", future.cause());
         }
     }
 
     public void ping() {
-        channel.write(new Ping());
+        channel.writeAndFlush(new Ping());
     }
 
     /**
