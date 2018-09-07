@@ -1,12 +1,11 @@
 package com.binarysnow.natty.io;
 
-import com.binarysnow.natty.NatsClient;
+import com.binarysnow.natty.NatsConnection;
 import com.binarysnow.natty.frame.server.Command;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.TooLongFrameException;
-import io.netty.util.ByteProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +20,7 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
 
     private static final int TWO_BYTES = 2;
 
-    private final NatsClient natsClient;
+    private final NatsConnection natsConnection;
 
     private final ServerCommandDecoder serverCommandDecoder;
 
@@ -29,17 +28,17 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
 
     /**
      * A decoder for the NATS protocol
-     * @param natsClient The NatsClient object for the connection
+     * @param natsConnection The NatsConnection object for the connection
      */
-    public NatsFrameDecoder(final NatsClient natsClient) {
-        this.natsClient = natsClient;
-        this.serverCommandDecoder = new ServerCommandDecoder(natsClient);
+    public NatsFrameDecoder(final NatsConnection natsConnection) {
+        this.natsConnection = natsConnection;
+        this.serverCommandDecoder = new ServerCommandDecoder(natsConnection);
         this.endOfLineProcessor = new EndOfLineProcessor();
     }
 
     @Override
     protected void decode(final ChannelHandlerContext context, final ByteBuf input, final List<Object> out) throws Exception {
-        final long maxFrameSize = natsClient.getMaxFrameSize();
+        final long maxFrameSize = natsConnection.getMaxFrameSize();
 
         final int endOfLineIndex = findEndOfLine(input);
 
@@ -69,7 +68,7 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
      * Returns -1 if no end of line was found in the buffer.
      */
     private int findEndOfLine(final ByteBuf input) {
-        endOfLineProcessor.reset(natsClient.getMaxFrameSize());
+        endOfLineProcessor.reset(natsConnection.getMaxFrameSize());
         int i = input.forEachByte(endOfLineProcessor);
 
         if (i > 0) {

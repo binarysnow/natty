@@ -1,10 +1,11 @@
 package com.binarysnow.natty.io;
 
-import com.binarysnow.natty.NatsClient;
+import com.binarysnow.natty.NatsConnection;
 import com.binarysnow.natty.frame.server.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.CorruptedFrameException;
+
 import java.nio.charset.StandardCharsets;
 
 
@@ -12,14 +13,14 @@ public class ServerCommandDecoder {
 
     private static final int TWO_BYTES = 2;
 
-    private final NatsClient natsClient;
+    private final NatsConnection natsConnection;
 
     /**
      * Create a ServerCommandDecoder
-     * @param natsClient The NatsClient for the connection
+     * @param natsConnection The NatsConnection for the connection
      */
-    public ServerCommandDecoder(final NatsClient natsClient) {
-        this.natsClient = natsClient;
+    public ServerCommandDecoder(final NatsConnection natsConnection) {
+        this.natsConnection = natsConnection;
     }
 
     /**

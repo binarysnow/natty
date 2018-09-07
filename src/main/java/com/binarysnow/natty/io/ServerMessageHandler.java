@@ -1,6 +1,6 @@
 package com.binarysnow.natty.io;
 
-import com.binarysnow.natty.NatsClient;
+import com.binarysnow.natty.NatsConnection;
 import com.binarysnow.natty.frame.server.Command;
 import com.binarysnow.natty.frame.server.Info;
 import com.binarysnow.natty.frame.server.Message;
@@ -14,14 +14,14 @@ public class ServerMessageHandler extends ChannelInboundHandlerAdapter {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(ServerMessageHandler.class);
 
-    private final NatsClient natsClient;
+    private final NatsConnection natsConnection;
 
     /**
      * Create a ServerMessageHandler
-     * @param natsClient The NatsClient for the connection
+     * @param natsConnection The NatsConnection for the connection
      */
-    public ServerMessageHandler(final NatsClient natsClient) {
-        this.natsClient = natsClient;
+    public ServerMessageHandler(final NatsConnection natsConnection) {
+        this.natsConnection = natsConnection;
     }
 
     @Override
@@ -40,12 +40,12 @@ public class ServerMessageHandler extends ChannelInboundHandlerAdapter {
                 break;
             case INFO:
                 final Info info = (Info) command;
-                natsClient.processInfo(info);
+                natsConnection.processInfo(info);
                 break;
             case MESSAGE:
                 LOGGER.debug("<-MESSAGE");
                 final Message message = (Message) command;
-                natsClient.processMessage(message);
+                natsConnection.processMessage(message);
                 break;
             case OK:
                 LOGGER.debug("<-OK");
