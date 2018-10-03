@@ -37,10 +37,10 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
     }
 
     @Override
-    protected void decode(final ChannelHandlerContext context, final ByteBuf input, final List<Object> out) throws Exception {
-        final long maxFrameSize = natsConnection.getMaxFrameSize();
+    protected void decode(final ChannelHandlerContext context, final ByteBuf input, final List<Object> out) {
+        final long maxFrameSize = natsConnection.getConnectionProperties().getMaxFrameSize();
 
-        final int endOfLineIndex = findEndOfLine(input);
+        final int endOfLineIndex = findEndOfLine(input, maxFrameSize);
 
         if (endOfLineIndex > 0) {
             final int commandLength = endOfLineIndex - input.readerIndex();
@@ -67,8 +67,8 @@ public class NatsFrameDecoder extends ByteToMessageDecoder {
      * Returns the index in the buffer of the end of line found.
      * Returns -1 if no end of line was found in the buffer.
      */
-    private int findEndOfLine(final ByteBuf input) {
-        endOfLineProcessor.reset(natsConnection.getMaxFrameSize());
+    private int findEndOfLine(final ByteBuf input, final long maxFrameSize) {
+        endOfLineProcessor.reset(maxFrameSize);
         int i = input.forEachByte(endOfLineProcessor);
 
         if (i > 0) {

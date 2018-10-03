@@ -1,12 +1,15 @@
 package com.binarysnow.natty;
 
+import com.binarysnow.natty.error.ErrorCodes;
 import com.binarysnow.natty.exception.CommunicationException;
+import com.binarysnow.natty.exception.ConnectionFailedException;
 import com.binarysnow.natty.frame.server.*;
 import com.binarysnow.natty.io.Initialiser;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
@@ -26,11 +29,12 @@ public class NatsConnection {
 
     private final Map<String, MessageReceiver> subscriberMap = new ConcurrentHashMap<>();
 
+    private final ConnectionProperties connectionProperties;
+
     private Channel channel;
 
-    private long maxFrameSize;
-
-    private NatsConnection() {
+    private NatsConnection(final ConnectionProperties connectionProperties) {
+        this.connectionProperties = new ConnectionProperties(connectionProperties);
     }
 
     /**
@@ -39,8 +43,9 @@ public class NatsConnection {
     public void publish(final String subject, final byte[] data) {
         while (!channel.isWritable()) {
 
+
         }
-        channel.write(new Publish(subject, data));
+        channel.writeAndFlush(new Publish(subject, data), channel.voidPromise());
     }
 
     public void request(final String subject, final byte[] data) {
@@ -84,7 +89,7 @@ public class NatsConnection {
         LOGGER.debug(info.toString());
 
         if (info.getMaximumPayload() != null) {
-            setMaxFrameSize(info.getMaximumPayload());
+            connectionProperties.setMaxFrameSize(info.getMaximumPayload());
         }
     }
 
@@ -110,42 +115,50 @@ public class NatsConnection {
     }
 
     /**
-     * Get the maximum frame size for the connection
-     * @return The maximum frame size for the connection
-     */
-    public long getMaxFrameSize() {
-        return maxFrameSize;
-    }
-
-    /**
-     * Set the maximum frame size for the connection
-     * @param maxFrameSize The maximum frame size for the connection
-     */
-    public void setMaxFrameSize(long maxFrameSize) {
-        this.maxFrameSize = maxFrameSize;
-    }
-
-    /**
      * Connect to the NATS server
      */
-    private void connect(final ConnectionProperties connectionProperties) throws InterruptedException {
-        Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(new NioEventLoopGroup());
-        bootstrap.channel(NioSocketChannel.class);
-        bootstrap.option(ChannelOption.TCP_NODELAY, true);
-        bootstrap.handler(new Initialiser(this));
-        bootstrap.remoteAddress(connectionProperties.getAddress(), connectionProperties.getPort());
-        ChannelFuture future = bootstrap.connect().sync();
-        channel = future.channel();
+    private void connect() throws ConnectionFailedException {
+        final EventLoopGroup group = new NioEventLoopGroup();
+
+        try {
+            final Bootstrap bootstrap = new Bootstrap();
+            bootstrap.group(group);
+            bootstrap.channel(NioSocketChannel.class);
+            bootstrap.option(ChannelOption.TCP_NODELAY, connectionProperties.getTcpNoDelay());
+            bootstrap.handler(new Initialiser(this));
+            bootstrap.remoteAddress(connectionProperties.getAddress(), connectionProperties.getPort());
+            final ChannelFuture future = bootstrap.connect().sync();
+            channel = future.channel();
+        } catch (final Exception exception) {
+            LOGGER.error("({}) Connection failed." , ErrorCodes.CONNECTION_FAILURE, exception);
+            throw new ConnectionFailedException(exception);
+        } finally {
+            final ConnectionCleanupExecutor executor = new ConnectionCleanupExecutor();
+            executor.execute(new ConnectionCleanupThread(channel, group));
+        }
     }
 
     /**
      * Create a new connection
      */
-    public static NatsConnection createConnection(final ConnectionProperties connectionProperties) throws InterruptedException {
-        final NatsConnection natsConnection = new NatsConnection();
-        natsConnection.connect(connectionProperties);
+    public static NatsConnection createConnection(final ConnectionProperties connectionProperties) throws ConnectionFailedException {
+        final NatsConnection natsConnection = new NatsConnection(connectionProperties);
+        natsConnection.connect();
         return natsConnection;
     }
 
+    /**
+     * Close the connection
+     */
+    public void close() {
+        channel.close();
+    }
+
+    /**
+     * Get the connection properties
+     * @return
+     */
+    public ConnectionProperties getConnectionProperties() {
+        return connectionProperties;
+    }
 }

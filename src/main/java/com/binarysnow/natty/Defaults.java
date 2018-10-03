@@ -15,11 +15,13 @@ public final class Defaults {
      * The default frame size
      */
     public static final long FRAME_SIZE;
+    public static final boolean TCP_NODELAY;
 
     static {
         HOST = "localhost";
         PORT = 4222;
         FRAME_SIZE = 1024;
+        TCP_NODELAY = false;
     }
 
     private Defaults() {
